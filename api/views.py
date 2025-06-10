@@ -25,37 +25,40 @@ def get_audio_by_batch(request, batch_id):
 
 
 
-@api_view(['POST'])
+@api_view(['POST']) 
 @parser_classes([MultiPartParser])
 def save_script(request):
     script_text = request.POST.get("script")
     batch_id = request.POST.get("batch_id")
-    duration = request.POST.get("duration")
+    label = request.POST.get("label")
+    part_number = request.POST.get("part_number")
+    percentage = request.POST.get("percentage")
     audio_file = request.FILES.get("audio")
 
-    audio_file.seek(0)  # 🔁 Rewind file pointer just in case
-    audio_binary = audio_file.read()
-
-    if not all([script_text, batch_id, duration, audio_file]):
+    # Basic validation
+    if not all([script_text, batch_id, label, part_number, percentage, audio_file]):
         return Response({"error": "Missing required data"}, status=400)
 
     try:
-  
+        audio_file.seek(0)
+        audio_binary = audio_file.read()
 
         if not audio_binary:
             return Response({"error": "Uploaded audio file is empty"}, status=400)
 
         audio_base64 = base64.b64encode(audio_binary).decode('utf-8')
 
-
         script_collection = get_collection("text_to_video_db", "scripts")
+
+        # Save each part as a unique doc: one per (batch_id, part_number)
         script_collection.update_one(
-            {"batch_id": batch_id},
+            {"batch_id": batch_id, "part_number": int(part_number)},
             {
                 "$set": {
+                    "label": label,
                     "script": script_text,
-                    "duration": duration,
-                    "audio_base64": audio_base64,  # Store in base64 format
+                    "percentage": float(percentage),
+                    "audio_base64": audio_base64,
                     "filename": audio_file.name,
                     "content_type": audio_file.content_type
                 }
@@ -63,12 +66,10 @@ def save_script(request):
             upsert=True
         )
 
-        return Response({"status": "Script and audio saved ✅"})
-    
+        return Response({"status": "✅ Script and audio saved for part", "part": part_number})
+
     except Exception as e:
         return Response({"error": f"Failed to save audio in DB: {str(e)}"}, status=500)
-
-
 
 
 @api_view(['GET'])

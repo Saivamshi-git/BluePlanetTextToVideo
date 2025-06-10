@@ -9,7 +9,6 @@ urlpatterns = [
     path('delete-batch/<str:batch_id>/', delete_batch),
     path('list-images/<str:batch_id>/', list_images_by_batch),
     path('get-image/<str:file_id>/', get_image),
-    path('save-script/', save_script),
     path('get-audio/<str:batch_id>/', get_audio_by_batch),
 
 
